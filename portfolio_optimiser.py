@@ -115,14 +115,21 @@ if original_tickers:
             # Prepare effective start dates for slicing and UI
             effective_slicing_starts_map = {}
             for t in original_tickers:
-                user_desired_start_str = st.session_state.editable_start_dates.get(t, "1900-01-01")
+                # Prefer the value coming from the date_input widget (if present)
+                widget_date_obj = st.session_state.get(f"date_input_{t}")
+                if widget_date_obj:
+                    user_desired_dt_obj = widget_date_obj
+                    # Keep editable_start_dates in sync with widget value
+                    st.session_state.editable_start_dates[t] = widget_date_obj.strftime('%Y-%m-%d')
+                else:
+                    user_desired_start_str = st.session_state.editable_start_dates.get(t, "1900-01-01")
+                    user_desired_dt_obj = pd.to_datetime(user_desired_start_str).date()
+
                 actual_earliest_dt_obj = actual_earliest_data_dates_map.get(t)
-                
-                min_date_for_logic = pd.to_datetime("1900-01-01").date() # Default earliest if no data
+                min_date_for_logic = pd.to_datetime("1900-01-01").date()  # Default earliest if no data
                 if actual_earliest_dt_obj and pd.notnull(actual_earliest_dt_obj):
                     min_date_for_logic = actual_earliest_dt_obj.date()
-                
-                user_desired_dt_obj = pd.to_datetime(user_desired_start_str).date()
+
                 effective_date_obj = max(user_desired_dt_obj, min_date_for_logic)
                 effective_slicing_starts_map[t] = effective_date_obj.strftime('%Y-%m-%d')
 
@@ -232,8 +239,6 @@ if original_tickers:
             )
             if new_selected_date_obj:
                 st.session_state.editable_start_dates[t] = new_selected_date_obj.strftime('%Y-%m-%d')
-                # Use query parameters to force a rerun
-                st.query_params.from_dict({"date_changed": new_selected_date_obj.strftime('%Y-%m-%d')})
             
             # Optionally, to inform the user of the actual data start if different (e.g., due to market holidays)
             # You could add another small text display here using start_dates_h[t] if desired.
