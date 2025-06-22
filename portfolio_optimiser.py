@@ -55,8 +55,17 @@ def build_plot(df, tickers):
 
 st.title("Portfolio Optimiser")
 
+# Initialize session state for editable start dates
+if "editable_start_dates" not in st.session_state:
+    st.session_state.editable_start_dates = {}
+
 tickers_input = st.text_input("Enter tickers separated by commas:", "AAPL, MSFT, GOOGL")
 original_tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
+
+# Update session state with default start dates for any new tickers
+for t in original_tickers:
+    if t not in st.session_state.editable_start_dates:
+        st.session_state.editable_start_dates[t] = "1970-01-01" # Default initial start date
 
 if original_tickers:
     # Initialize historical stats with defaults for all original_tickers
@@ -68,11 +77,27 @@ if original_tickers:
     # Attempt to download data only if there are tickers specified
     if original_tickers:
         try:
+            # Determine the earliest start date from user selections for the global fetch
+            all_user_start_dates_str = [
+                st.session_state.editable_start_dates.get(t, "1970-01-01") for t in original_tickers
+            ]
+            valid_start_dates_obj = []
+            for date_str in all_user_start_dates_str:
+                try:
+                    valid_start_dates_obj.append(pd.to_datetime(date_str))
+                except (ValueError, TypeError):
+                    pass # Ignore unparseable dates for min() calculation
+
+            if not valid_start_dates_obj: # Fallback if no valid dates
+                global_fetch_start_date_str = "1970-01-01"
+            else:
+                global_fetch_start_date_str = min(valid_start_dates_obj).strftime('%Y-%m-%d')
+
             # yf.download returns a DataFrame. ['Close'] selects close prices.
             # If only one ticker is successful, raw_dl_prices becomes a Series.
             # If multiple tickers are successful, it's a DataFrame.
             # If no tickers are successful, yf.download might return an empty DataFrame, leading to KeyError on ['Close'].
-            raw_dl_prices = yf.download(original_tickers, start="1970-01-01", interval="1mo", auto_adjust=True, progress=False)['Close']
+            raw_dl_prices = yf.download(original_tickers, start=global_fetch_start_date_str, interval="1mo", auto_adjust=True, progress=False)['Close']
             
             raw_dl_prices_df = None
             if isinstance(raw_dl_prices, pd.Series):
@@ -97,11 +122,33 @@ if original_tickers:
                     valid_data = raw_dl_prices_df[actual_tickers_with_data].dropna(how='all').copy()
                     
                     if not valid_data.empty:
-                        returns = valid_data.pct_change().dropna(how='all')
+                        # Slice data for each ticker based on its user-defined start date
+                        data_for_returns_calculation_list = []
+                        processed_tickers_for_returns = []
 
-                        if not returns.empty:
-                            returns_df = returns if isinstance(returns, pd.DataFrame) else returns.to_frame()
-                            
+                        for t_col in valid_data.columns:
+                            user_start_for_ticker_str = st.session_state.editable_start_dates.get(t_col, global_fetch_start_date_str)
+                            ticker_series_sliced = valid_data[t_col].loc[user_start_for_ticker_str:]
+                            if not ticker_series_sliced.empty:
+                                data_for_returns_calculation_list.append(ticker_series_sliced)
+                                processed_tickers_for_returns.append(t_col)
+                        
+                        returns_df = pd.DataFrame(columns=original_tickers) # Default to empty
+                        if data_for_returns_calculation_list:
+                            final_prices_df = pd.concat(data_for_returns_calculation_list, axis=1, join='outer')
+                            if not final_prices_df.empty: # Ensure columns are named correctly if some series were all NaN and dropped by concat
+                                final_prices_df.columns = [s.name for s in data_for_returns_calculation_list if not s.empty]
+
+                            returns = final_prices_df.pct_change().dropna(how='all')
+                            if not returns.empty:
+                                returns_df = returns if isinstance(returns, pd.DataFrame) else returns.to_frame()
+                        
+                        # Ensure returns_df has columns for all original_tickers, even if empty, for consistent stat calculation
+                        missing_cols = [tc for tc in original_tickers if tc not in returns_df.columns]
+                        for mc in missing_cols:
+                            returns_df[mc] = np.nan
+
+                        if not returns_df.empty:
                             # Calculate stats only for columns with enough data points for std deviation
                             final_cols_for_stats = [col for col in returns_df.columns if returns_df[col].count() > 1]
 
@@ -156,7 +203,27 @@ if original_tickers:
         with c2:
             vol = st.number_input(f"{t}", value=round(sig_h[t], 4), format="%.4f", key=f"vol_{t}", label_visibility="collapsed")
         with c3:
-            st.text_input(f"Start Date {t}", value=start_dates_h[t], key=f"start_date_{t}", disabled=True, label_visibility="collapsed")
+            user_defined_start_str = st.session_state.editable_start_dates.get(t, "1970-01-01")
+            try:
+                user_defined_date_obj = pd.to_datetime(user_defined_start_str).date()
+            except (ValueError, TypeError): # Handle parsing errors or "N/A"
+                user_defined_date_obj = pd.to_datetime("1970-01-01").date()
+
+            new_selected_date_obj = st.date_input(
+                label=f"Start Date for {t}", # Label for screen readers, etc.
+                value=user_defined_date_obj,
+                min_value=pd.to_datetime("1900-01-01").date(),
+                max_value=pd.Timestamp.today().date(),
+                key=f"date_input_{t}", # Unique key for the date input widget
+                label_visibility="collapsed"
+            )
+            if new_selected_date_obj:
+                st.session_state.editable_start_dates[t] = new_selected_date_obj.strftime('%Y-%m-%d')
+            
+            # Optionally, to inform the user of the actual data start if different (e.g., due to market holidays)
+            # You could add another small text display here using start_dates_h[t] if desired.
+            # For now, the editable date input is the primary interface for this column.
+
         asset_data[t] = {"mu": mu, "vol": vol}
 
     # === Correlation Matrix ===
