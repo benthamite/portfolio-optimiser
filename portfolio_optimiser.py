@@ -201,16 +201,20 @@ if original_tickers:
     asset_data = {}
 
     # Add column headers
-    c1_header, c2_header, c3_header = st.columns(3)
+    name_header, c1_header, c2_header, c3_header = st.columns(4)
+    with name_header:
+        st.markdown("**Asset**")
     with c1_header:
         st.markdown("**Return**")
     with c2_header:
         st.markdown("**Volatility**")
     with c3_header:
-        st.markdown("**Start Date**")
+        st.markdown("**Start date**")
 
     for t in tickers:
-        c1, c2, c3 = st.columns(3)
+        name_col, c1, c2, c3 = st.columns(4)
+        with name_col:
+            st.markdown(f"**{t}**")
         with c1:
             mu = st.number_input(f"{t}", value=round(mu_h[t], 4), format="%.4f", key=f"mu_{t}", label_visibility="collapsed")
         with c2:
@@ -249,20 +253,26 @@ if original_tickers:
     # === Correlation Matrix ===
     st.subheader("📐 Correlation matrix")
     corr_matrix = np.eye(n)
+    # Header row with asset names
+    header_cols = st.columns(n + 1)
+    header_cols[0].markdown("**Asset**")
+    for idx, tkr in enumerate(tickers):
+        header_cols[idx + 1].markdown(f"**{tkr}**")
     display_matrix = []
     for i in range(n):
         row = []
-        cols = st.columns(n)
+        cols = st.columns(n + 1)
+        cols[0].markdown(f"**{tickers[i]}**")
         for j in range(n):
             if j < i:
-                cols[j].markdown("‎")
+                cols[j + 1].markdown("‎")
                 row.append("–")
             elif i == j:
-                cols[j].markdown("**1.0000**")
+                cols[j + 1].markdown("**1.0000**")
                 row.append("1.0000")
             else:
                 default = round(rho_h.iloc[i, j], 4)
-                val = cols[j].number_input("", value=default, format="%.4f", key=f"corr_{i}_{j}")
+                val = cols[j + 1].number_input("", value=default, format="%.4f", key=f"corr_{i}_{j}")
                 corr_matrix[i, j] = corr_matrix[j, i] = val
                 row.append(f"{val:.4f}")
         display_matrix.append(row)
