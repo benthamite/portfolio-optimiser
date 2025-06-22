@@ -53,7 +53,7 @@ def build_plot(df, tickers):
 
 # === Streamlit UI ===
 
-st.title("Efficient frontier")
+st.title("Portfolio Optimisation")
 
 tickers_input = st.text_input("Enter tickers separated by commas:", "AAPL, MSFT, GOOGL")
 tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
