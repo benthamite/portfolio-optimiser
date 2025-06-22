@@ -21,8 +21,8 @@ This project is a portfolio optimisation tool using Modern Portfolio Theory (MPT
 
 ## Parameters
 
-- **Return**: The expected annual return of an asset, calculated from historical data.
-- **Volatility**: The standard deviation of an asset's returns, representing risk.
+- **Return**: The expected annual return of an asset.
+- **Volatility**: The standard deviation of an asset's returns. For example, an asset with a return of 0.10 and a volatility of 0.08 will yield returns between 0.02 and 0.18 (0.10 ± 0.08) in two out of three years, and between -0.04 and 0.26 (0.10 ± (0.08 × 2)) in 19 out of 20 years.
 - **Correlation Matrix**: A table showing the correlation coefficients between assets, indicating how they move in relation to each other.
 
 ## Screenshot
@@ -31,12 +31,21 @@ This project is a portfolio optimisation tool using Modern Portfolio Theory (MPT
 
 ## How to run
 
-1. Ensure you have Python and pip installed.
-2. Install the required dependencies:
+Assuming you have git, Python and pip installed, open a terminal and follow these steps:
+
+1. Clone this repo:
+   ```bash
+   git clone https://github.com/benthamite/portfolio-optimiser
+   ```
+2. Navigate to the project directory:
+   ```bash
+   cd portfolio-optimiser
+   ```
+3. Install the required dependencies:
    ```bash
    pip install numpy pandas yfinance scipy streamlit plotly
    ```
-3. Run the Streamlit application:
+4. Run the Streamlit application:
    ```bash
    streamlit run portfolio_optimiser.py
    ```
