@@ -62,10 +62,8 @@ if "editable_start_dates" not in st.session_state:
 tickers_input = st.text_input("Enter tickers separated by commas:", "AAPL, MSFT, GOOGL")
 original_tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
 
-# Update session state with default start dates for any new tickers
-for t in original_tickers:
-    if t not in st.session_state.editable_start_dates:
-        st.session_state.editable_start_dates[t] = "1970-01-01" # Default initial start date
+# This section will be moved and updated after initial data fetch
+# to use actual earliest dates.
 
 if original_tickers:
     # Initialize historical stats with defaults for all original_tickers
@@ -77,27 +75,9 @@ if original_tickers:
     # Attempt to download data only if there are tickers specified
     if original_tickers:
         try:
-            # Determine the earliest start date from user selections for the global fetch
-            all_user_start_dates_str = [
-                st.session_state.editable_start_dates.get(t, "1970-01-01") for t in original_tickers
-            ]
-            valid_start_dates_obj = []
-            for date_str in all_user_start_dates_str:
-                try:
-                    valid_start_dates_obj.append(pd.to_datetime(date_str))
-                except (ValueError, TypeError):
-                    pass # Ignore unparseable dates for min() calculation
-
-            if not valid_start_dates_obj: # Fallback if no valid dates
-                global_fetch_start_date_str = "1970-01-01"
-            else:
-                global_fetch_start_date_str = min(valid_start_dates_obj).strftime('%Y-%m-%d')
-
-            # yf.download returns a DataFrame. ['Close'] selects close prices.
-            # If only one ticker is successful, raw_dl_prices becomes a Series.
-            # If multiple tickers are successful, it's a DataFrame.
-            # If no tickers are successful, yf.download might return an empty DataFrame, leading to KeyError on ['Close'].
-            raw_dl_prices = yf.download(original_tickers, start=global_fetch_start_date_str, interval="1mo", auto_adjust=True, progress=False)['Close']
+            # Always fetch a broad range to determine actual earliest dates
+            broad_fetch_start_date_str = "1900-01-01"
+            raw_dl_prices = yf.download(original_tickers, start=broad_fetch_start_date_str, interval="1mo", auto_adjust=True, progress=False)['Close']
             
             raw_dl_prices_df = None
             if isinstance(raw_dl_prices, pd.Series):
@@ -112,6 +92,39 @@ if original_tickers:
             else: # Should not happen if yf.download worked, but as a fallback
                 raw_dl_prices_df = pd.DataFrame()
 
+            # Determine actual earliest data dates from the broad fetch
+            actual_earliest_data_dates_map = {}
+            if not raw_dl_prices_df.empty:
+                for t in original_tickers:
+                    if t in raw_dl_prices_df.columns:
+                        first_idx = raw_dl_prices_df[t].first_valid_index()
+                        if pd.notnull(first_idx):
+                            actual_earliest_data_dates_map[t] = first_idx
+            
+            # Initialize session state for editable_start_dates for new tickers
+            # using their actual earliest available date.
+            for t in original_tickers:
+                if t not in st.session_state.editable_start_dates:
+                    actual_start_obj = actual_earliest_data_dates_map.get(t)
+                    if actual_start_obj and pd.notnull(actual_start_obj):
+                        st.session_state.editable_start_dates[t] = actual_start_obj.strftime('%Y-%m-%d')
+                    else:
+                        # Fallback if no data found for this ticker in the broad fetch
+                        st.session_state.editable_start_dates[t] = "1900-01-01" 
+
+            # Prepare effective start dates for slicing and UI
+            effective_slicing_starts_map = {}
+            for t in original_tickers:
+                user_desired_start_str = st.session_state.editable_start_dates.get(t, "1900-01-01")
+                actual_earliest_dt_obj = actual_earliest_data_dates_map.get(t)
+                
+                min_date_for_logic = pd.to_datetime("1900-01-01").date() # Default earliest if no data
+                if actual_earliest_dt_obj and pd.notnull(actual_earliest_dt_obj):
+                    min_date_for_logic = actual_earliest_dt_obj.date()
+                
+                user_desired_dt_obj = pd.to_datetime(user_desired_start_str).date()
+                effective_date_obj = max(user_desired_dt_obj, min_date_for_logic)
+                effective_slicing_starts_map[t] = effective_date_obj.strftime('%Y-%m-%d')
 
             if not raw_dl_prices_df.empty:
                 # Filter for columns that are in original_tickers and have actual data
@@ -119,18 +132,20 @@ if original_tickers:
 
                 if actual_tickers_with_data:
                     # Use .copy() to avoid SettingWithCopyWarning later
-                    valid_data = raw_dl_prices_df[actual_tickers_with_data].dropna(how='all').copy()
+                    # Note: valid_data now refers to the full history from broad_fetch_start_date_str
+                    valid_data = raw_dl_prices_df[actual_tickers_with_data].dropna(how='all').copy() 
                     
                     if not valid_data.empty:
-                        # Slice data for each ticker based on its user-defined start date
+                        # Slice data for each ticker based on its *effective* start date
                         data_for_returns_calculation_list = []
                         processed_tickers_for_returns = []
 
-                        for t_col in valid_data.columns:
-                            user_start_for_ticker_str = st.session_state.editable_start_dates.get(t_col, global_fetch_start_date_str)
-                            ticker_series_sliced = valid_data[t_col].loc[user_start_for_ticker_str:]
-                            if not ticker_series_sliced.empty:
-                                data_for_returns_calculation_list.append(ticker_series_sliced)
+                        for t_col in valid_data.columns: # Iterate over columns present in valid_data
+                            if t_col in effective_slicing_starts_map: # Ensure t_col is one of original_tickers
+                                effective_start_for_ticker_str = effective_slicing_starts_map[t_col]
+                                ticker_series_sliced = valid_data[t_col].loc[effective_start_for_ticker_str:]
+                                if not ticker_series_sliced.empty:
+                                    data_for_returns_calculation_list.append(ticker_series_sliced)
                                 processed_tickers_for_returns.append(t_col)
                         
                         returns_df = pd.DataFrame(columns=original_tickers) # Default to empty
@@ -203,16 +218,23 @@ if original_tickers:
         with c2:
             vol = st.number_input(f"{t}", value=round(sig_h[t], 4), format="%.4f", key=f"vol_{t}", label_visibility="collapsed")
         with c3:
-            user_defined_start_str = st.session_state.editable_start_dates.get(t, "1970-01-01")
-            try:
-                user_defined_date_obj = pd.to_datetime(user_defined_start_str).date()
-            except (ValueError, TypeError): # Handle parsing errors or "N/A"
-                user_defined_date_obj = pd.to_datetime("1970-01-01").date()
+            # Get user's desired start date from session state
+            user_desired_start_str = st.session_state.editable_start_dates.get(t, "1900-01-01")
+            user_desired_date_obj = pd.to_datetime(user_desired_start_str).date()
+
+            # Get actual earliest date for this ticker
+            actual_earliest_dt_obj = actual_earliest_data_dates_map.get(t)
+            min_value_for_widget = pd.to_datetime("1900-01-01").date() # Fallback
+            if actual_earliest_dt_obj and pd.notnull(actual_earliest_dt_obj):
+                min_value_for_widget = actual_earliest_dt_obj.date()
+            
+            # Value for widget is the later of user's desire and actual earliest
+            value_for_widget = max(user_desired_date_obj, min_value_for_widget)
 
             new_selected_date_obj = st.date_input(
                 label=f"Start Date for {t}", # Label for screen readers, etc.
-                value=user_defined_date_obj,
-                min_value=pd.to_datetime("1900-01-01").date(),
+                value=value_for_widget,
+                min_value=min_value_for_widget,
                 max_value=pd.Timestamp.today().date(),
                 key=f"date_input_{t}", # Unique key for the date input widget
                 label_visibility="collapsed"
