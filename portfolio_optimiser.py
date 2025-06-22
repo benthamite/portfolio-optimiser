@@ -5,7 +5,14 @@ from scipy.optimize import minimize
 import streamlit as st
 import plotly.graph_objects as go
 
-# === Core Functions ===
+# === Helper Functions ===
+
+def get_risk_free_rate():
+    # Fetch the 10-year treasury yield as a proxy for the risk-free rate
+    treasury_data = yf.download("^TNX", period="1d", interval="1d")
+    if not treasury_data.empty:
+        return treasury_data['Close'].iloc[-1] / 100  # Convert percentage to decimal
+    return 0.0  # Fallback if data is unavailable
 
 def compute_frontier(mu, cov, theta_range):
     n = len(mu)
@@ -24,8 +31,9 @@ def compute_frontier(mu, cov, theta_range):
             results['Standard Deviation'].append(np.sqrt(w @ cov @ w))
             results['Weights'].append(w)
     df = pd.DataFrame(results)
-    # Calculate Sharpe Ratio assuming a risk-free rate of 0
-    df['Sharpe'] = df['Expected Return'] / df['Standard Deviation']
+    # Calculate Sharpe Ratio using the current risk-free rate
+    risk_free_rate = get_risk_free_rate()
+    df['Sharpe'] = (df['Expected Return'] - risk_free_rate) / df['Standard Deviation']
     return df
 
 def build_plot(df, tickers):
