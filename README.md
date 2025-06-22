@@ -1,4 +1,4 @@
-# Portfolio Optimisation
+# Portfolio Optimiser
 
 A tool for finding the optimal allocation of financial assets, given expected returns, volatility and correlation between assets.
 
