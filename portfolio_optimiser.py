@@ -10,13 +10,17 @@ import plotly.graph_objects as go
 def get_risk_free_rate():
     # Fetch the 10-year treasury yield as a proxy for the risk-free rate
     try:
-        treasury_data = yf.download("^TNX", period="1d", interval="1d", progress=False)
-        if not treasury_data.empty:
-            latest_close = treasury_data['Close'].iloc[-1]
-            if pd.notna(latest_close):
+        # Fetch data for the last 7 days to increase chance of getting a recent value
+        treasury_data = yf.download("^TNX", period="7d", interval="1d", progress=False)
+        if not treasury_data.empty and 'Close' in treasury_data.columns:
+            # Get the 'Close' prices, drop NaNs, and take the last available one
+            recent_closes = treasury_data['Close'].dropna()
+            if not recent_closes.empty:
+                latest_close = recent_closes.iloc[-1]
                 return latest_close / 100  # Convert percentage to decimal
     except Exception:
         # In case of any error during download or processing (e.g., network issue)
+        # Consider adding st.warning(f"Could not fetch risk-free rate: {e}") for debugging if needed
         pass  # Fallback to 0.0 will be used
     return 0.0  # Fallback if data is unavailable, NaN, or an error occurs
 
