@@ -9,10 +9,16 @@ import plotly.graph_objects as go
 
 def get_risk_free_rate():
     # Fetch the 10-year treasury yield as a proxy for the risk-free rate
-    treasury_data = yf.download("^TNX", period="1d", interval="1d")
-    if not treasury_data.empty:
-        return treasury_data['Close'].iloc[-1] / 100  # Convert percentage to decimal
-    return 0.0  # Fallback if data is unavailable
+    try:
+        treasury_data = yf.download("^TNX", period="1d", interval="1d", progress=False)
+        if not treasury_data.empty:
+            latest_close = treasury_data['Close'].iloc[-1]
+            if pd.notna(latest_close):
+                return latest_close / 100  # Convert percentage to decimal
+    except Exception:
+        # In case of any error during download or processing (e.g., network issue)
+        pass  # Fallback to 0.0 will be used
+    return 0.0  # Fallback if data is unavailable, NaN, or an error occurs
 
 def compute_frontier(mu, cov, theta_range):
     n = len(mu)
@@ -38,10 +44,15 @@ def compute_frontier(mu, cov, theta_range):
 
 def build_plot(df, tickers):
     hover_texts = []
-    for w, r, v in zip(df['Weights'], df['Expected Return'], df['Standard Deviation']):
+    # df['Sharpe'] is assumed to be present from compute_frontier, calculated with risk_free_rate
+    for w, r, v, s in zip(df['Weights'], df['Expected Return'], df['Standard Deviation'], df['Sharpe']):
+        sharpe_display_val = "N/A"
+        if pd.notna(s):  # Handle potential NaN/inf in Sharpe values for display
+            sharpe_display_val = f"{s:.2f}"
+
         text = (f"<b>Expected Return:</b> {r*100:.2f}%<br>"
                 f"<b>Standard Deviation:</b> {v*100:.2f}%<br>"
-                f"<b>Sharpe Ratio:</b> {r/v:.2f}<br><br>"
+                f"<b>Sharpe Ratio:</b> {sharpe_display_val}<br><br>"
                 + "<b>Breakdown:</b><br>"
                 + "<br>".join([f"{t}: {w_i*100:.2f}%" for t, w_i in zip(tickers, w)]))
         hover_texts.append(text)
