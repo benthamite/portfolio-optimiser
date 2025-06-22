@@ -1,6 +1,6 @@
 # Portfolio Optimisation
 
-This application allows users to perform portfolio optimisation by computing the efficient frontier.
+A tool for finding the optimal allocation of financial assets, given expected returns, volatility and correlation between assets.
 
 ## Features
 
