@@ -119,7 +119,6 @@ if tickers:
     vol = np.array([asset_data[t]['vol'] for t in tickers])
     cov = corr_matrix * np.outer(vol, vol)
 
-    st.subheader("📉 Efficient frontier")
     frontier = compute_frontier(mu, cov, np.logspace(-3, 3, 100))
     st.plotly_chart(build_plot(frontier, tickers), use_container_width=True)
 
