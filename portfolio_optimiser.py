@@ -63,7 +63,7 @@ if original_tickers:
     mu_h = pd.Series(0.0, index=original_tickers, dtype=float)
     sig_h = pd.Series(0.01, index=original_tickers, dtype=float) # Default volatility to a small positive number
     rho_h = pd.DataFrame(np.eye(len(original_tickers)), index=original_tickers, columns=original_tickers, dtype=float)
-    n_obs_h = pd.Series(0, index=original_tickers, dtype=int)
+    start_dates_h = pd.Series("N/A", index=original_tickers, dtype=str)
 
     # Attempt to download data only if there are tickers specified
     if original_tickers:
@@ -108,11 +108,14 @@ if original_tickers:
                             if final_cols_for_stats:
                                 mu_calculated = returns_df[final_cols_for_stats].mean()
                                 sig_calculated = returns_df[final_cols_for_stats].std()
-                                obs_calculated = returns_df[final_cols_for_stats].count()
+                                # Get the first valid index (date) for each column in returns_df
+                                for col in final_cols_for_stats:
+                                    first_valid_idx = returns_df[col].first_valid_index()
+                                    if pd.notnull(first_valid_idx):
+                                        start_dates_h[col] = first_valid_idx.strftime('%Y-%m-%d')
 
                                 mu_h.update(mu_calculated)
                                 sig_h.update(sig_calculated)
-                                n_obs_h.update(obs_calculated)
                                 # Ensure sig_h doesn't have NaNs (e.g. if std was 0 or somehow became NaN) and is not zero
                                 sig_h.fillna(0.01, inplace=True)
                                 sig_h[sig_h == 0] = 0.01
@@ -144,7 +147,7 @@ if original_tickers:
     with c2_header:
         st.markdown("**Volatility**")
     with c3_header:
-        st.markdown("**Observations**")
+        st.markdown("**Start Date**")
 
     for t in tickers:
         c1, c2, c3 = st.columns(3)
@@ -153,7 +156,7 @@ if original_tickers:
         with c2:
             vol = st.number_input(f"{t}", value=round(sig_h[t], 4), format="%.4f", key=f"vol_{t}", label_visibility="collapsed")
         with c3:
-            st.number_input(f"Obs {t}", value=n_obs_h[t], key=f"obs_{t}", disabled=True, label_visibility="collapsed")
+            st.text_input(f"Start Date {t}", value=start_dates_h[t], key=f"start_date_{t}", disabled=True, label_visibility="collapsed")
         asset_data[t] = {"mu": mu, "vol": vol}
 
     # === Correlation Matrix ===
