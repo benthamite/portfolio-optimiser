@@ -225,9 +225,9 @@ if original_tickers:
     with name_header:
         st.markdown("**Asset**")
     with c1_header:
-        st.markdown("**Return**")
+        st.markdown("**Expected return**")
     with c2_header:
-        st.markdown("**Volatility**")
+        st.markdown("**Standard deviation**")
     with c3_header:
         st.markdown("**Start date**")
 
