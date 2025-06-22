@@ -16,12 +16,12 @@ def get_risk_free_rate():
             # Get the 'Close' prices, drop NaNs, and take the last available one
             recent_closes = treasury_data['Close'].dropna()
             if not recent_closes.empty:
+                st.write(f"Recent closes: {recent_closes}")
                 # Use .iat[-1] for guaranteed scalar access to the last element
                 # Ensure the returned value is a Python float
                 return float(recent_closes.iat[-1] / 100)
-    except Exception:
-        # In case of any error during download or processing (e.g., network issue)
-        # Consider adding st.warning(f"Could not fetch risk-free rate: {e}") for debugging if needed
+    except Exception as e:
+        st.warning(f"Could not fetch risk-free rate: {e}")
         pass  # Fallback to 0.0 will be used
     return 0.0  # Fallback if data is unavailable, NaN, or an error occurs
 
