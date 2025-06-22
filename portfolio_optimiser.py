@@ -19,7 +19,7 @@ def get_risk_free_rate():
                 st.write(f"Recent closes: {recent_closes}")
                 # Use .iat[-1] for guaranteed scalar access to the last element
                 # Ensure the returned value is a Python float
-                return float(recent_closes.iat[-1] / 100)
+                return float(recent_closes.iloc[-1] / 100)
     except Exception as e:
         st.warning(f"Could not fetch risk-free rate: {e}")
         pass  # Fallback to 0.0 will be used
