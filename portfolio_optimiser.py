@@ -17,9 +17,8 @@ def get_risk_free_rate():
             recent_closes = treasury_data['Close'].dropna()
             if not recent_closes.empty:
                 # Use .iat[-1] for guaranteed scalar access to the last element
-                latest_close_scalar = recent_closes.iat[-1]
                 # Ensure the returned value is a Python float
-                return float(latest_close_scalar / 100)
+                return float(recent_closes.iat[-1] / 100)
     except Exception:
         # In case of any error during download or processing (e.g., network issue)
         # Consider adding st.warning(f"Could not fetch risk-free rate: {e}") for debugging if needed
@@ -113,11 +112,11 @@ if "risk_free_rate" not in st.session_state:
     st.session_state.risk_free_rate = get_risk_free_rate() # Stored as decimal
 
 # Editable Risk-Free Rate
-rfr_percentage = st.number_input(
-    "Risk-Free Rate (%)",
-    value=st.session_state.risk_free_rate * 100,
-    format="%.2f",
-    key="risk_free_rate_input_percentage",
+st.session_state.risk_free_rate = st.number_input(
+    "Risk-Free Rate (as decimal)",
+    value=st.session_state.risk_free_rate,
+    format="%.4f",
+    key="risk_free_rate_input_decimal",
     help="Enter the annual risk-free rate (e.g., 10-year Treasury yield). This is used for Sharpe Ratio calculation."
 )
 st.session_state.risk_free_rate = rfr_percentage / 100 # Update session state with decimal value
