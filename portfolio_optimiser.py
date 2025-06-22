@@ -20,7 +20,7 @@ def get_risk_free_rate():
         pass  # Fallback to 0.0 will be used
     return 0.0  # Fallback if data is unavailable, NaN, or an error occurs
 
-def compute_frontier(mu, cov, theta_range):
+def compute_frontier(mu, cov, theta_range, risk_free_rate):
     n = len(mu)
     results = {'Expected Return': [], 'Standard Deviation': [], 'Weights': []}
     def objective(w, mu, cov, theta):
@@ -37,8 +37,7 @@ def compute_frontier(mu, cov, theta_range):
             results['Standard Deviation'].append(np.sqrt(w @ cov @ w))
             results['Weights'].append(w)
     df = pd.DataFrame(results)
-    # Calculate Sharpe Ratio using the current risk-free rate
-    risk_free_rate = get_risk_free_rate()
+    # Calculate Sharpe Ratio using the provided risk-free rate
     df['Sharpe'] = (df['Expected Return'] - risk_free_rate) / df['Standard Deviation']
     return df
 
@@ -101,9 +100,21 @@ def build_plot(df, tickers):
 
 st.title("Portfolio Optimiser")
 
-# Initialize session state for editable start dates
+# Initialize session state
 if "editable_start_dates" not in st.session_state:
     st.session_state.editable_start_dates = {}
+if "risk_free_rate" not in st.session_state:
+    st.session_state.risk_free_rate = get_risk_free_rate() # Stored as decimal
+
+# Editable Risk-Free Rate
+rfr_percentage = st.number_input(
+    "Risk-Free Rate (%)",
+    value=st.session_state.risk_free_rate * 100,
+    format="%.2f",
+    key="risk_free_rate_input_percentage",
+    help="Enter the annual risk-free rate (e.g., 10-year Treasury yield). This is used for Sharpe Ratio calculation."
+)
+st.session_state.risk_free_rate = rfr_percentage / 100 # Update session state with decimal value
 
 tickers_input = st.text_input("Enter tickers separated by commas:", "AAPL, MSFT, GOOGL")
 original_tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
@@ -330,7 +341,7 @@ if original_tickers:
     cov = corr_matrix * np.outer(vol, vol)
 
     st.subheader("📉 Efficient frontier")
-    frontier = compute_frontier(mu, cov, np.logspace(-3, 3, 100))
+    frontier = compute_frontier(mu, cov, np.logspace(-3, 3, 100), st.session_state.risk_free_rate)
     st.plotly_chart(build_plot(frontier, tickers), use_container_width=True)
 
     if st.checkbox("Show portfolio weights table"):
