@@ -163,32 +163,48 @@ if original_tickers:
                         for mc in missing_cols:
                             returns_df[mc] = np.nan
 
+                        # Initialize/reset stats to defaults for all original_tickers before recalculation.
+                        # This ensures that if a ticker no longer has sufficient data after a date change,
+                        # its stats are reset and don't carry over stale values.
+                        mu_h = pd.Series(0.0, index=original_tickers, dtype=float)
+                        sig_h = pd.Series(0.01, index=original_tickers, dtype=float) # Default volatility
+                        start_dates_h = pd.Series("N/A", index=original_tickers, dtype=str)
+                        # Reset rho_h to identity matrix for all original_tickers
+                        if original_tickers: # Avoid error if original_tickers is empty
+                            rho_h = pd.DataFrame(np.eye(len(original_tickers)), index=original_tickers, columns=original_tickers, dtype=float)
+                        else:
+                            rho_h = pd.DataFrame()
+
+
                         if not returns_df.empty:
-                            # Calculate stats only for columns with enough data points for std deviation
                             final_cols_for_stats = [col for col in returns_df.columns if returns_df[col].count() > 1]
 
                             if final_cols_for_stats:
-                                mu_calculated = returns_df[final_cols_for_stats].mean()
-                                sig_calculated = returns_df[final_cols_for_stats].std()
-                                # Get the first valid index (date) for each column in returns_df
+                                # Calculate stats for the subset of tickers with enough data
+                                mu_subset = returns_df[final_cols_for_stats].mean()
+                                sig_subset = returns_df[final_cols_for_stats].std()
+
                                 for col in final_cols_for_stats:
+                                    mu_h[col] = mu_subset.get(col, 0.0) 
+                                    sig_h[col] = sig_subset.get(col, 0.01)
+                                    
+                                    # Ensure individual sig_h values are not NaN or zero
+                                    if pd.isnull(sig_h[col]) or sig_h[col] == 0:
+                                        sig_h[col] = 0.01
+                                    
                                     first_valid_idx = returns_df[col].first_valid_index()
                                     if pd.notnull(first_valid_idx):
                                         start_dates_h[col] = first_valid_idx.strftime('%Y-%m-%d')
-
-                                mu_h.update(mu_calculated)
-                                sig_h.update(sig_calculated)
-                                # Ensure sig_h doesn't have NaNs (e.g. if std was 0 or somehow became NaN) and is not zero
-                                sig_h.fillna(0.01, inplace=True)
-                                sig_h[sig_h == 0] = 0.01
+                                    # else, start_dates_h[col] remains "N/A" from its re-initialization above
                                 
-                                if len(final_cols_for_stats) >= 1:
-                                    rho_calculated = returns_df[final_cols_for_stats].corr()
-                                    # Update rho_h carefully, only for pairs present in rho_calculated
-                                    for t1_calc in rho_calculated.index:
-                                        for t2_calc in rho_calculated.columns:
-                                            if t1_calc in rho_h.index and t2_calc in rho_h.columns:
-                                                rho_h.loc[t1_calc, t2_calc] = rho_calculated.loc[t1_calc, t2_calc]
+                                # Recalculate rho_h for the tickers in final_cols_for_stats.
+                                # rho_h was already reset to identity. Now, fill in actual correlations.
+                                if len(final_cols_for_stats) >= 1: 
+                                    rho_subset_calculated = returns_df[final_cols_for_stats].corr()
+                                    for t1 in rho_subset_calculated.index:
+                                        for t2 in rho_subset_calculated.columns:
+                                            if t1 in rho_h.index and t2 in rho_h.columns: # Should always be true
+                                                 rho_h.loc[t1, t2] = rho_subset_calculated.loc[t1, t2]
         except KeyError: # Specifically catch if 'Close' key is not found (e.g. all tickers failed)
             st.warning("Could not retrieve 'Close' prices for any of the specified tickers. Please check ticker symbols or enter data manually.")
         except Exception as e:
