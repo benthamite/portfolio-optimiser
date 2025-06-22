@@ -119,7 +119,6 @@ st.session_state.risk_free_rate = st.number_input(
     key="risk_free_rate_input_decimal",
     help="Enter the annual risk-free rate (e.g., 10-year Treasury yield). This is used for Sharpe Ratio calculation."
 )
-st.session_state.risk_free_rate = rfr_percentage / 100 # Update session state with decimal value
 
 tickers_input = st.text_input("Enter tickers separated by commas:", "AAPL, MSFT, GOOGL")
 original_tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
