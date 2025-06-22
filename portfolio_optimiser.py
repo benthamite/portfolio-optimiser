@@ -169,8 +169,9 @@ if original_tickers:
                         final_cols_for_stats = [col for col in returns_df.columns if returns_df[col].count() > 1]
 
                         if final_cols_for_stats:
-                            mu_subset = returns_df[final_cols_for_stats].mean()
-                            sig_subset = returns_df[final_cols_for_stats].std()
+                            # Annualise statistics derived from monthly returns
+                            mu_subset = returns_df[final_cols_for_stats].mean() * 12
+                            sig_subset = returns_df[final_cols_for_stats].std() * np.sqrt(12)
 
                             for col in final_cols_for_stats:
                                 mu_h[col] = mu_subset.get(col, 0.0)
