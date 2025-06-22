@@ -23,7 +23,10 @@ def compute_frontier(mu, cov, theta_range):
             results['Return'].append(w @ mu)
             results['Volatility'].append(np.sqrt(w @ cov @ w))
             results['Weights'].append(w)
-    return pd.DataFrame(results)
+    df = pd.DataFrame(results)
+    # Calculate Sharpe Ratio assuming a risk-free rate of 0
+    df['Sharpe'] = df['Return'] / df['Volatility']
+    return df
 
 def build_plot(df, tickers):
     hover_texts = []
@@ -49,6 +52,17 @@ def build_plot(df, tickers):
         template="plotly_white",
         hovermode="closest"
     )
+    # Highlight the max Sharpe ratio point
+    max_sharpe_idx = df['Sharpe'].idxmax()
+    max_sharpe_point = df.iloc[max_sharpe_idx]
+    fig.add_trace(go.Scatter(
+        x=[max_sharpe_point['Volatility'] * 100],
+        y=[max_sharpe_point['Return'] * 100],
+        mode='markers',
+        marker=dict(color='red', size=10, symbol='diamond'),
+        name="Max Sharpe Portfolio",
+        text=f"Max Sharpe Ratio: {max_sharpe_point['Sharpe']:.2f}"
+    ))
     return fig
 
 # === Streamlit UI ===
