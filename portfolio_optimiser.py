@@ -62,20 +62,28 @@ def build_plot(df, tickers):
         hovermode="closest"
     )
     # Highlight the max Sharpe ratio point
-    max_sharpe_idx = int(df['Sharpe'].idxmax(skipna=True))
-    max_sharpe_point = df.iloc[max_sharpe_idx]
-    fig.add_trace(go.Scatter(
-        x=[max_sharpe_point['Standard Deviation'] * 100],
-        y=[max_sharpe_point['Expected Return'] * 100],
-        mode='markers',
-        marker=dict(color='red', size=10, symbol='diamond'),
-        name="Max Sharpe Portfolio",
-        text=(f"<b>Expected Return:</b> {max_sharpe_point['Expected Return']*100:.2f}%<br>"
-              f"<b>Standard Deviation:</b> {max_sharpe_point['Standard Deviation']*100:.2f}%<br>"
-              f"<b>Sharpe Ratio:</b> {max_sharpe_point['Sharpe']:.2f}<br><br>"
-              + "<b>Breakdown:</b><br>"
-              + "<br>".join([f"{t}: {w_i*100:.2f}%" for t, w_i in zip(tickers, max_sharpe_point['Weights'])]))
-    ))
+    # Check if there are any valid Sharpe ratios to find a max
+    if df['Sharpe'].notna().any():
+        try:
+            max_sharpe_idx = int(df['Sharpe'].idxmax(skipna=True))
+            max_sharpe_point = df.iloc[max_sharpe_idx]
+            fig.add_trace(go.Scatter(
+                x=[max_sharpe_point['Standard Deviation'] * 100],
+                y=[max_sharpe_point['Expected Return'] * 100],
+                mode='markers',
+                marker=dict(color='red', size=10, symbol='diamond'),
+                name="Max Sharpe Portfolio",
+                text=(f"<b>Expected Return:</b> {max_sharpe_point['Expected Return']*100:.2f}%<br>"
+                      f"<b>Standard Deviation:</b> {max_sharpe_point['Standard Deviation']*100:.2f}%<br>"
+                      f"<b>Sharpe Ratio:</b> {max_sharpe_point['Sharpe']:.2f}<br><br>"
+                      + "<b>Breakdown:</b><br>"
+                      + "<br>".join([f"{t}: {w_i*100:.2f}%" for t, w_i in zip(tickers, max_sharpe_point['Weights'])]))
+            ))
+        except ValueError:
+            # This can happen if idxmax returns NaN and int(NaN) fails.
+            # The check df['Sharpe'].notna().any() should prevent this,
+            # but as a fallback, we can skip plotting the point.
+            pass # Optionally, log a warning or inform the user
     return fig
 
 # === Streamlit UI ===
