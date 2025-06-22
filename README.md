@@ -10,6 +10,10 @@ This application allows users to perform portfolio optimisation by computing the
 - Visualise the efficient frontier.
 - View and download the portfolio weights for different points on the frontier.
 
+## Screenshot
+
+![](./Screenshot.png)
+
 ## How to run
 
 1. Ensure you have Python and pip installed.
