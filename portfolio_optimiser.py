@@ -51,7 +51,7 @@ def build_plot(df, tickers):
     for w, r, v, s in zip(df['Weights'], df['Expected Return'], df['Standard Deviation'], df['Sharpe']):
         sharpe_display_val = "N/A"
         if pd.notna(s):  # Handle potential NaN/inf in Sharpe values for display
-            sharpe_display_val = f"{s:.2f}"
+            sharpe_display_val = f"{s:.3f}"
 
         text = (f"<b>Expected Return:</b> {r*100:.2f}%<br>"
                 f"<b>Standard Deviation:</b> {v*100:.2f}%<br>"
@@ -89,7 +89,7 @@ def build_plot(df, tickers):
                 name="Max Sharpe Portfolio",
                 text=(f"<b>Expected Return:</b> {max_sharpe_point['Expected Return']*100:.2f}%<br>"
                       f"<b>Standard Deviation:</b> {max_sharpe_point['Standard Deviation']*100:.2f}%<br>"
-                      f"<b>Sharpe Ratio:</b> {max_sharpe_point['Sharpe']:.2f}<br><br>"
+                      f"<b>Sharpe Ratio:</b> {max_sharpe_point['Sharpe']:.3f}<br><br>"
                       + "<b>Breakdown:</b><br>"
                       + "<br>".join([f"{t}: {w_i*100:.2f}%" for t, w_i in zip(tickers, max_sharpe_point['Weights'])]))
             ))
