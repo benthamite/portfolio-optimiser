@@ -77,12 +77,20 @@ if tickers:
     # === Asset Inputs ===
     st.subheader("📋 Asset inputs")
     asset_data = {}
+
+    # Add column headers
+    c1_header, c2_header = st.columns(2)
+    with c1_header:
+        st.markdown("**Return**")
+    with c2_header:
+        st.markdown("**Volatility**")
+
     for t in tickers:
         c1, c2 = st.columns(2)
         with c1:
-            mu = st.number_input(f"{t} – Return", value=round(mu_h[t], 4), format="%.4f", key=f"mu_{t}")
+            mu = st.number_input(f"{t}", value=round(mu_h[t], 4), format="%.4f", key=f"mu_{t}", label_visibility="collapsed")
         with c2:
-            vol = st.number_input(f"{t} – Volatility", value=round(sig_h[t], 4), format="%.4f", key=f"vol_{t}")
+            vol = st.number_input(f"{t}", value=round(sig_h[t], 4), format="%.4f", key=f"vol_{t}", label_visibility="collapsed")
         asset_data[t] = {"mu": mu, "vol": vol}
 
     # === Correlation Matrix ===
