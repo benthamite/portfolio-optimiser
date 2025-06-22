@@ -16,7 +16,6 @@ def get_risk_free_rate():
             # Get the 'Close' prices, drop NaNs, and take the last available one
             recent_closes = treasury_data['Close'].dropna()
             if not recent_closes.empty:
-                st.write(f"Recent closes: {recent_closes}")
                 # Use .iat[-1] for guaranteed scalar access to the last element
                 # Ensure the returned value is a Python float
                 return float(recent_closes.iloc[-1] / 100)
@@ -111,6 +110,8 @@ if "editable_start_dates" not in st.session_state:
 if "risk_free_rate" not in st.session_state:
     st.session_state.risk_free_rate = get_risk_free_rate() # Stored as decimal
 
+tickers_input = st.text_input("Enter tickers separated by commas:", "AAPL, MSFT, GOOGL")
+
 # Editable Risk-Free Rate
 st.session_state.risk_free_rate = st.number_input(
     "Risk-Free Rate (as decimal)",
@@ -119,8 +120,6 @@ st.session_state.risk_free_rate = st.number_input(
     key="risk_free_rate_input_decimal",
     help="Enter the annual risk-free rate (e.g., 10-year Treasury yield). This is used for Sharpe Ratio calculation."
 )
-
-tickers_input = st.text_input("Enter tickers separated by commas:", "AAPL, MSFT, GOOGL")
 original_tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
 
 # This section will be moved and updated after initial data fetch
