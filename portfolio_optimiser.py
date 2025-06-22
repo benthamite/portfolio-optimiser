@@ -62,7 +62,7 @@ def build_plot(df, tickers):
         hovermode="closest"
     )
     # Highlight the max Sharpe ratio point
-    max_sharpe_idx = df['Sharpe'].idxmax(skipna=True)
+    max_sharpe_idx = int(df['Sharpe'].idxmax(skipna=True))
     max_sharpe_point = df.iloc[max_sharpe_idx]
     fig.add_trace(go.Scatter(
         x=[max_sharpe_point['Standard Deviation'] * 100],
