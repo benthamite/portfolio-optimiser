@@ -232,7 +232,7 @@ if original_tickers:
             )
             if new_selected_date_obj:
                 st.session_state.editable_start_dates[t] = new_selected_date_obj.strftime('%Y-%m-%d')
-                st.experimental_rerun()  # Force rerun to update calculations immediately
+                st.session_state["trigger_rerun"] = not st.session_state.get("trigger_rerun", False)
             
             # Optionally, to inform the user of the actual data start if different (e.g., due to market holidays)
             # You could add another small text display here using start_dates_h[t] if desired.
