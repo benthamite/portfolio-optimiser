@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 
 def compute_frontier(mu, cov, theta_range):
     n = len(mu)
-    results = {'Return': [], 'Standard Deviation': [], 'Weights': []}
+    results = {'Expected Return': [], 'Standard Deviation': [], 'Weights': []}
     def objective(w, mu, cov, theta):
         return -w @ mu + theta * (w @ cov @ w)
     for theta in theta_range:
@@ -20,17 +20,17 @@ def compute_frontier(mu, cov, theta_range):
             options={'ftol': 1e-9})
         if result.success:
             w = result.x
-            results['Return'].append(w @ mu)
+            results['Expected Return'].append(w @ mu)
             results['Standard Deviation'].append(np.sqrt(w @ cov @ w))
             results['Weights'].append(w)
     df = pd.DataFrame(results)
     # Calculate Sharpe Ratio assuming a risk-free rate of 0
-    df['Sharpe'] = df['Return'] / df['Standard Deviation']
+    df['Sharpe'] = df['Expected Return'] / df['Standard Deviation']
     return df
 
 def build_plot(df, tickers):
     hover_texts = []
-    for w, r, v in zip(df['Weights'], df['Return'], df['Standard Deviation']):
+    for w, r, v in zip(df['Weights'], df['Expected Return'], df['Standard Deviation']):
         text = (f"<b>Expected Return:</b> {r*100:.2f}%<br>"
                 f"<b>Standard Deviation:</b> {v*100:.2f}%<br>"
                 f"<b>Sharpe Ratio:</b> {r/v:.2f}<br><br>"
@@ -39,7 +39,7 @@ def build_plot(df, tickers):
         hover_texts.append(text)
     fig = go.Figure(go.Scatter(
         x=df['Standard Deviation'] * 100,
-        y=df['Return'] * 100,
+        y=df['Expected Return'] * 100,
         mode='markers+lines',
         text=hover_texts,
         hoverinfo='text',
@@ -58,11 +58,11 @@ def build_plot(df, tickers):
     max_sharpe_point = df.iloc[max_sharpe_idx]
     fig.add_trace(go.Scatter(
         x=[max_sharpe_point['Standard Deviation'] * 100],
-        y=[max_sharpe_point['Return'] * 100],
+        y=[max_sharpe_point['Expected Return'] * 100],
         mode='markers',
         marker=dict(color='red', size=10, symbol='diamond'),
         name="Max Sharpe Portfolio",
-        text=(f"<b>Expected Return:</b> {max_sharpe_point['Return']*100:.2f}%<br>"
+        text=(f"<b>Expected Return:</b> {max_sharpe_point['Expected Return']*100:.2f}%<br>"
               f"<b>Standard Deviation:</b> {max_sharpe_point['Standard Deviation']*100:.2f}%<br>"
               f"<b>Sharpe Ratio:</b> {max_sharpe_point['Sharpe']:.2f}<br><br>"
               + "<b>Breakdown:</b><br>"
@@ -309,7 +309,7 @@ if original_tickers:
     if st.checkbox("Show portfolio weights table"):
         df_w = pd.DataFrame(frontier['Weights'].tolist(), columns=tickers)
         df_w.insert(0, "Standard Deviation (%)", frontier['Standard Deviation'] * 100)
-        df_w.insert(1, "Expected Return (%)", frontier['Return'] * 100)
+        df_w.insert(1, "Expected Return (%)", frontier['Expected Return'] * 100)
         st.dataframe(df_w.style.format(precision=2))
 
     st.download_button("Download CSV", frontier.to_csv(index=False), file_name="efficient_frontier.csv")

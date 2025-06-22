@@ -5,7 +5,7 @@ This project is a portfolio optimisation tool using Modern Portfolio Theory (MPT
 ## Features
 
 - Input asset tickers to fetch historical data.
-- Calculate expected returns, standard deviation, and correlation matrix.
+- Calculate expected return, standard deviation, and correlation matrix.
 - Display the efficient frontier.
 - Download the efficient frontier data as a CSV.
 - Editable start dates for historical data.
@@ -15,13 +15,13 @@ This project is a portfolio optimisation tool using Modern Portfolio Theory (MPT
 
 1. Enter asset tickers separated by commas.
 2. Adjust the start date for historical data.
-3. View and edit asset returns, standard deviation, and correlation matrix.
+3. View and edit asset expected return, standard deviation, and correlation matrix.
 4. View the efficient frontier plot.
 5. Optionally, download the data.
 
 ## Parameters
 
-- **Return**: The expected annual return of an asset.
+- **Expected Return**: The expected annual return of an asset.
 - **Standard Deviation**: The standard deviation of an asset's returns. For example, an asset with a return of 0.10 and a standard deviation of 0.08 will yield returns between 0.02 and 0.18 (0.10 ± 0.08) in two out of three years, and between -0.04 and 0.26 (0.10 ± (0.08 × 2)) in 19 out of 20 years.
 - **Correlation Matrix**: A table showing the correlation coefficients between assets, indicating how they move in relation to each other.
 
