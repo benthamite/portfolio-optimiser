@@ -32,7 +32,8 @@ def build_plot(df, tickers):
     hover_texts = []
     for w, r, v in zip(df['Weights'], df['Return'], df['Volatility']):
         text = (f"<b>Expected Return:</b> {r*100:.2f}%<br>"
-                f"<b>Volatility:</b> {v*100:.2f}%<br><br>"
+                f"<b>Volatility:</b> {v*100:.2f}%<br>"
+                f"<b>Sharpe Ratio:</b> {r/v:.2f}<br><br>"
                 + "<b>Breakdown:</b><br>"
                 + "<br>".join([f"{t}: {w_i*100:.2f}%" for t, w_i in zip(tickers, w)]))
         hover_texts.append(text)
@@ -61,7 +62,11 @@ def build_plot(df, tickers):
         mode='markers',
         marker=dict(color='red', size=10, symbol='diamond'),
         name="Max Sharpe Portfolio",
-        text=f"Max Sharpe Ratio: {max_sharpe_point['Sharpe']:.2f}"
+        text=(f"<b>Expected Return:</b> {max_sharpe_point['Return']*100:.2f}%<br>"
+              f"<b>Volatility:</b> {max_sharpe_point['Volatility']*100:.2f}%<br>"
+              f"<b>Sharpe Ratio:</b> {max_sharpe_point['Sharpe']:.2f}<br><br>"
+              + "<b>Breakdown:</b><br>"
+              + "<br>".join([f"{t}: {w_i*100:.2f}%" for t, w_i in zip(tickers, max_sharpe_point['Weights'])]))
     ))
     return fig
 
