@@ -1,14 +1,29 @@
 # Portfolio Optimiser
 
-A tool for finding the optimal allocation of financial assets, given expected returns, volatility and correlation between assets.
+This project is a portfolio optimisation tool using Modern Portfolio Theory (MPT). It allows users to input asset tickers, fetch historical data, and compute the efficient frontier.
 
 ## Features
 
-- Input stock tickers to fetch historical price data.
-- Adjust expected returns and volatilities for each asset.
-- Modify the correlation matrix between assets.
-- Visualise the efficient frontier.
-- View and download the portfolio weights for different points on the frontier.
+- Input asset tickers to fetch historical data.
+- Calculate expected returns, volatility, and correlation matrix.
+- Display the efficient frontier.
+- Download the efficient frontier data as a CSV.
+- Editable start dates for historical data.
+- Display and edit asset returns, volatility, and correlation matrix.
+
+## Usage
+
+1. Enter asset tickers separated by commas.
+2. Adjust the start date for historical data.
+3. View and edit asset returns, volatility, and correlation matrix.
+4. View the efficient frontier plot.
+5. Optionally, download the data.
+
+## Parameters
+
+- **Return**: The expected annual return of an asset, calculated from historical data.
+- **Volatility**: The standard deviation of an asset's returns, representing risk.
+- **Correlation Matrix**: A table showing the correlation coefficients between assets, indicating how they move in relation to each other.
 
 ## Screenshot
 
