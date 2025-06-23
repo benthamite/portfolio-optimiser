@@ -1,6 +1,6 @@
 # Portfolio Optimiser
 
-This project is a portfolio optimisation tool using Modern Portfolio Theory (MPT). It allows users to input asset tickers, fetch historical data, and compute the efficient frontier.
+A portfolio optimisation tool using Modern Portfolio Theory (MPT). It allows users to input asset tickers, fetch historical data, and compute the efficient frontier. Unlike the other calculators out there, this tool allows overriding the historical values, allowing the user to input their own estimated expected returns, standard deviations, and correlation matrices when they expect this to differ from the historical data.
 
 ## Features
 
