@@ -213,7 +213,8 @@ if original_tickers:
                     if data_for_returns_calculation_list:
                         final_prices_df = pd.concat(data_for_returns_calculation_list, axis=1, join='outer')
                         final_prices_df.columns = [s.name for s in data_for_returns_calculation_list if not s.empty]
-                        returns = final_prices_df.pct_change().dropna(how='all')
+                        # Use log returns so prices can never fall below zero
+                        returns = np.log(final_prices_df / final_prices_df.shift(1)).dropna(how='all')
                         returns_df = returns if isinstance(returns, pd.DataFrame) else returns.to_frame()
                     
                     missing_cols = [tc for tc in original_tickers if tc not in returns_df.columns]
@@ -344,7 +345,9 @@ if original_tickers:
     cov = corr_matrix * np.outer(vol, vol)
 
     st.subheader("📉 Efficient frontier")
-    frontier = compute_frontier(mu, cov, np.logspace(-3, 3, 100), st.session_state.risk_free_rate)
+    # Convert the user-entered simple risk-free rate to a log rate
+    risk_free_log = np.log1p(st.session_state.risk_free_rate)
+    frontier = compute_frontier(mu, cov, np.logspace(-3, 3, 100), risk_free_log)
     st.plotly_chart(build_plot(frontier, tickers), use_container_width=True)
 
     if st.checkbox("Show portfolio weights table"):
