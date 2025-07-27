@@ -1,6 +1,6 @@
 # Portfolio Optimiser
 
-A portfolio optimisation tool using Modern Portfolio Theory (MPT). It allows users to input asset tickers, fetch historical data, and compute the efficient frontier. Unlike other calculators, this tool allows the user to override historical values and enter their own parameter estimates when they expect these to differ from past performance.
+A portfolio optimisation tool using Modern Portfolio Theory (MPT). Unlike other calculators, this tool allows the user to override historical values and enter their own parameter estimates when they expect these to differ from past performance.
 
 ## Features
 
