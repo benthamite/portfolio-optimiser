@@ -334,7 +334,13 @@ if original_tickers:
                 row.append("1.0000")
             else:
                 default = round(rho_h.iloc[i, j], 4)
-                val = cols[j + 1].number_input("", value=default, format="%.4f", key=f"corr_{i}_{j}")
+                val = cols[j + 1].number_input(
+                    label=f"Correlation {tickers[i]}–{tickers[j]}",
+                    value=default,
+                    format="%.4f",
+                    key=f"corr_{i}_{j}",
+                    label_visibility="collapsed",
+                )
                 corr_matrix[i, j] = corr_matrix[j, i] = val
                 row.append(f"{val:.4f}")
         display_matrix.append(row)
@@ -348,7 +354,7 @@ if original_tickers:
     # Convert the user-entered simple risk-free rate to a log rate
     risk_free_log = np.log1p(st.session_state.risk_free_rate)
     frontier = compute_frontier(mu, cov, np.logspace(-3, 3, 100), risk_free_log)
-    st.plotly_chart(build_plot(frontier, tickers), use_container_width=True)
+    st.plotly_chart(build_plot(frontier, tickers), width="stretch")
 
     if st.checkbox("Show portfolio weights table"):
         df_w = pd.DataFrame(frontier['Weights'].tolist(), columns=tickers)
