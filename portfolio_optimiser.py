@@ -24,36 +24,58 @@ def get_risk_free_rate():
         pass  # Fallback to 0.0 will be used
     return 0.0  # Fallback if data is unavailable, NaN, or an error occurs
 
+def compute_min_variance_portfolio(cov):
+    n = cov.shape[0]
+
+    def objective(w, cov):
+        return w @ cov @ w
+
+    result = minimize(
+        objective,
+        np.ones(n) / n,
+        args=(cov,),
+        method='SLSQP',
+        bounds=[(0, 1)] * n,
+        constraints=[{'type': 'eq', 'fun': lambda w: np.sum(w) - 1}],
+        options={'ftol': 1e-10},
+    )
+    if not result.success:
+        raise ValueError(f"Could not compute minimum-variance portfolio: {result.message}")
+    return result.x
+
+
 def compute_frontier(mu, cov, target_vols, risk_free_rate):
     n = len(mu)
     results = {'Expected Return': [], 'Standard Deviation': [], 'Weights': []}
 
-    def objective(w, cov):
-        return w @ cov @ w
+    def objective(w, mu):
+        return -(w @ mu)
 
     for target_vol in target_vols:
         result = minimize(
             objective,
             np.ones(n) / n,
-            args=(cov,),
+            args=(mu,),
             method='SLSQP',
             bounds=[(0, 1)] * n,
             constraints=[
                 {'type': 'eq', 'fun': lambda w: np.sum(w) - 1},
-                {'type': 'eq', 'fun': lambda w, tv=target_vol: np.sqrt(w @ cov @ w) - tv},
+                {'type': 'ineq', 'fun': lambda w, tv=target_vol: tv - np.sqrt(w @ cov @ w)},
             ],
             options={'ftol': 1e-9},
         )
         if result.success:
             w = result.x
-            results['Expected Return'].append(w @ mu)
-            results['Standard Deviation'].append(np.sqrt(w @ cov @ w))
+            port_var = w @ cov @ w
+            port_std = float(np.sqrt(max(port_var, 0.0)))
+            results['Expected Return'].append(float(w @ mu))
+            results['Standard Deviation'].append(port_std)
             results['Weights'].append(w)
 
     df = pd.DataFrame(results)
 
     # Calculate Sharpe ratio using the provided simple annual risk-free rate
-    df['Sharpe'] = (df['Expected Return'] - risk_free_rate) / df['Standard Deviation']
+    df['Sharpe'] = (df['Expected Return'] - risk_free_rate) / df['Standard Deviation'].replace(0, np.nan)
 
     return df
 
@@ -370,10 +392,29 @@ if original_tickers:
         value=15.0,
         step=0.5,
     )
-    target_vols = np.linspace(0.01, target_vol / 100, 60)
+
+    try:
+        w_min_var = compute_min_variance_portfolio(cov)
+        min_var_vol = float(np.sqrt(max(w_min_var @ cov @ w_min_var, 0.0)))
+    except ValueError as e:
+        st.error(str(e))
+        st.stop()
+
+    target_vol_decimal = target_vol / 100
+    if target_vol_decimal < min_var_vol:
+        st.warning(
+            f"The selected target volatility ({target_vol:.2f}%) is below the minimum achievable long-only "
+            f"portfolio volatility ({min_var_vol * 100:.2f}%). Showing the minimum-variance portfolio only."
+        )
+        target_vols = np.array([min_var_vol])
+    else:
+        target_vols = np.linspace(min_var_vol, target_vol_decimal, 60)
 
     frontier = compute_frontier(mu, cov, target_vols, st.session_state.risk_free_rate)
-    st.plotly_chart(build_plot(frontier, tickers), width="stretch")
+    if frontier.empty:
+        st.warning("Could not compute any feasible portfolios for the selected risk tolerance.")
+    else:
+        st.plotly_chart(build_plot(frontier, tickers), width="stretch")
 
     if st.checkbox("Show portfolio weights table"):
         df_w = pd.DataFrame(frontier['Weights'].tolist(), columns=tickers)
