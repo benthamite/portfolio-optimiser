@@ -24,25 +24,37 @@ def get_risk_free_rate():
         pass  # Fallback to 0.0 will be used
     return 0.0  # Fallback if data is unavailable, NaN, or an error occurs
 
-def compute_frontier(mu, cov, theta_range, risk_free_rate):
+def compute_frontier(mu, cov, target_vols, risk_free_rate):
     n = len(mu)
     results = {'Expected Return': [], 'Standard Deviation': [], 'Weights': []}
-    def objective(w, mu, cov, theta):
-        return -w @ mu + theta * (w @ cov @ w)
-    for theta in theta_range:
+
+    def objective(w, cov):
+        return w @ cov @ w
+
+    for target_vol in target_vols:
         result = minimize(
-            objective, np.ones(n) / n, args=(mu, cov, theta),
-            method='SLSQP', bounds=[(0, 1)] * n,
-            constraints=[{'type': 'eq', 'fun': lambda w: np.sum(w) - 1}],
-            options={'ftol': 1e-9})
+            objective,
+            np.ones(n) / n,
+            args=(cov,),
+            method='SLSQP',
+            bounds=[(0, 1)] * n,
+            constraints=[
+                {'type': 'eq', 'fun': lambda w: np.sum(w) - 1},
+                {'type': 'eq', 'fun': lambda w, tv=target_vol: np.sqrt(w @ cov @ w) - tv},
+            ],
+            options={'ftol': 1e-9},
+        )
         if result.success:
             w = result.x
             results['Expected Return'].append(w @ mu)
             results['Standard Deviation'].append(np.sqrt(w @ cov @ w))
             results['Weights'].append(w)
+
     df = pd.DataFrame(results)
-    # Calculate Sharpe Ratio using the provided risk-free rate
+
+    # Calculate Sharpe ratio using the provided simple annual risk-free rate
     df['Sharpe'] = (df['Expected Return'] - risk_free_rate) / df['Standard Deviation']
+
     return df
 
 def build_plot(df, tickers):
@@ -213,8 +225,7 @@ if original_tickers:
                     if data_for_returns_calculation_list:
                         final_prices_df = pd.concat(data_for_returns_calculation_list, axis=1, join='outer')
                         final_prices_df.columns = [s.name for s in data_for_returns_calculation_list if not s.empty]
-                        # Use log returns so prices can never fall below zero
-                        returns = np.log(final_prices_df / final_prices_df.shift(1)).dropna(how='all')
+                        returns = final_prices_df.pct_change().dropna(how='all')
                         returns_df = returns if isinstance(returns, pd.DataFrame) else returns.to_frame()
                     
                     missing_cols = [tc for tc in original_tickers if tc not in returns_df.columns]
@@ -351,9 +362,17 @@ if original_tickers:
     cov = corr_matrix * np.outer(vol, vol)
 
     st.subheader("📉 Efficient frontier")
-    # Convert the user-entered simple risk-free rate to a log rate
-    risk_free_log = np.log1p(st.session_state.risk_free_rate)
-    frontier = compute_frontier(mu, cov, np.logspace(-3, 3, 100), risk_free_log)
+
+    target_vol = st.slider(
+        "Risk tolerance (target volatility, annual %)",
+        min_value=1.0,
+        max_value=80.0,
+        value=15.0,
+        step=0.5,
+    )
+    target_vols = np.linspace(0.01, target_vol / 100, 60)
+
+    frontier = compute_frontier(mu, cov, target_vols, st.session_state.risk_free_rate)
     st.plotly_chart(build_plot(frontier, tickers), width="stretch")
 
     if st.checkbox("Show portfolio weights table"):
