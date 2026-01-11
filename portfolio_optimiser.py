@@ -385,14 +385,6 @@ if original_tickers:
 
     st.subheader("📉 Efficient frontier")
 
-    target_vol = st.slider(
-        "Risk tolerance (target volatility, annual %)",
-        min_value=1.0,
-        max_value=80.0,
-        value=15.0,
-        step=0.5,
-    )
-
     try:
         w_min_var = compute_min_variance_portfolio(cov)
         min_var_vol = float(np.sqrt(max(w_min_var @ cov @ w_min_var, 0.0)))
@@ -400,23 +392,19 @@ if original_tickers:
         st.error(str(e))
         st.stop()
 
-    target_vol_decimal = target_vol / 100
-    if target_vol_decimal < min_var_vol:
-        st.warning(
-            f"The selected target volatility ({target_vol:.2f}%) is below the minimum achievable long-only "
-            f"portfolio volatility ({min_var_vol * 100:.2f}%). Showing the minimum-variance portfolio only."
-        )
-        target_vols = np.array([min_var_vol])
-    else:
-        target_vols = np.linspace(min_var_vol, target_vol_decimal, 60)
+    # Compute a full frontier from the minimum-variance portfolio up to a sensible
+    # high-risk bound for the available assets.
+    max_asset_vol = float(np.nanmax(vol))
+    upper_vol = max(min_var_vol * 1.05, max_asset_vol)
+    target_vols = np.linspace(min_var_vol, upper_vol, 80)
 
     frontier = compute_frontier(mu, cov, target_vols, st.session_state.risk_free_rate)
     if frontier.empty:
-        st.warning("Could not compute any feasible portfolios for the selected risk tolerance.")
+        st.warning("Could not compute any feasible portfolios for the current inputs.")
     else:
         st.plotly_chart(build_plot(frontier, tickers), width="stretch")
 
-    if st.checkbox("Show portfolio weights table"):
+    if not frontier.empty and st.checkbox("Show portfolio weights table"):
         df_w = pd.DataFrame(frontier['Weights'].tolist(), columns=tickers)
         df_w.insert(0, "Standard Deviation (%)", frontier['Standard Deviation'] * 100)
         df_w.insert(1, "Expected Return (%)", frontier['Expected Return'] * 100)
